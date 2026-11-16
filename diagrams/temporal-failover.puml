@@ -1,0 +1,29 @@
+@startuml
+hide footbox
+participant "Temporal Service" as T
+participant "Workflow / Activity" as W
+database "Реестр" as DB
+participant "Push-провайдер" as Push
+participant "SMS-провайдер" as SMS
+participant "API / ретранслятор" as API
+W -> DB : Назначить push-попытку
+W -> Push : Отправить push
+W -> T : Сохранить таймер до\nдедлайна push
+... Срок подтверждения истёк ...
+T -> W : Возобновить workflow по\nтаймеру
+W -> Push : Сверить статус, если\nдоступно
+Push --> W : Статус неизвестен
+W -> DB : Повторно проверить ACK,\nразрешить SMS при\nотсутствии ACK
+alt ACK успел сохраниться
+  DB --> W : Доставка завершена
+  W -> T : Завершить workflow
+else SMS разрешена настройками и назначена
+  W -> SMS : Отправить SMS с ключом попытки
+  SMS -> API : Положительный DLR
+  API -> DB : Завершить доставку и записать команду Signal
+  API -> T : Signal о смене статуса
+  T -> W : Продолжить workflow
+  W -> DB : Сверить подтверждение
+  W -> T : Завершить workflow
+end
+@enduml

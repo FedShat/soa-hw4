@@ -1,0 +1,20 @@
+@startuml
+title C4 Container — Notification Platform, PostgreSQL
+!pragma layout smetana
+skinparam componentStyle rectangle
+actor "Клиент / поддержка" as User
+rectangle "Банковские сервисы\n[Software System]" as Bank
+rectangle "Notification Platform [System Boundary]" {
+  component "Notification API\n[Container: Go, HTTP]\nПриём, настройки, статусы, callback" as API
+  component "Воркеры доставки\n[Container: Go]\nТаймеры, маршрутизация и адаптеры" as Workers
+  database "Состояние и очереди\n[Container: PostgreSQL]\nУведомления, задачи, попытки, настройки" as DB
+}
+rectangle "Push / SMS / email\n[External Software Systems]" as Providers
+User -down-> API : Настройки, статус и ACK\nприложения [HTTPS]
+Bank -down-> API : Событие из outbox\n[HTTPS]
+API --> DB : Сохраняет событие и\ncallback [SQL]
+Workers --> DB : Берут задачи и фиксируют\nпереходы [SQL]
+Workers -up-> Providers : Отправляют и сверяют\nстатусы [HTTPS]
+Providers -down-> API : Передают статусы\nдоставки [HTTPS]
+Providers -right-> User : Доставляют через каналы
+@enduml

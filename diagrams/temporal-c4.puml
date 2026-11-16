@@ -1,0 +1,25 @@
+@startuml
+title C4 Container — Notification Platform, Temporal
+!pragma layout smetana
+skinparam componentStyle rectangle
+actor "Клиент / поддержка" as User
+rectangle "Банковские сервисы\n[Software System]" as Bank
+rectangle "Notification Platform [System Boundary]" {
+  component "Notification API\n[Container: Go, HTTP]\nПриём, callback и ретранслятор outbox" as API
+  database "Реестр уведомлений\n[Container: PostgreSQL]\nНастройки, попытки и outbox" as DB
+  component "Temporal Service\n[Container: Temporal]\nTask Queues, таймеры и Signals" as T
+  database "Хранилище Temporal\n[Container: PostgreSQL]\nИстория workflow" as TDB
+  component "Воркеры доставки\n[Container: Go, Temporal SDK]\nWorkflows, Activities и адаптеры" as W
+}
+rectangle "Push / SMS / email\n[External Software Systems]" as Providers
+Bank -down-> API : Событие из outbox\n[HTTPS]
+User -down-> API : Настройки, статус и ACK\nприложения [HTTPS]
+API --> DB : Сохраняет уведомления и\ncallback [SQL]
+API --> T : Передаёт Start и Signal\nиз outbox [gRPC]
+W --> T : Получают задачи,\nсохраняют результаты\n[gRPC]
+T --> TDB : Хранит историю workflow\n[SQL]
+W --> DB : Сверяют состояние,\nназначают попытки [SQL]
+W -up-> Providers : Отправляют и сверяют\nстатусы [HTTPS]
+Providers -down-> API : Передают статусы\nдоставки [HTTPS]
+Providers -right-> User : Доставляют через каналы
+@enduml

@@ -1,0 +1,19 @@
+@startuml
+hide footbox
+participant "Банковский сервис" as Bank
+participant "Notification API" as API
+database "PostgreSQL" as DB
+participant "Воркер" as W
+participant "Push-провайдер" as Push
+participant "Мобильное приложение" as App
+Bank -> API : Событие из outbox
+API -> DB : Уведомление и задача в\nодной транзакции
+DB --> API : Commit
+API --> Bank : Идентификатор уведомления
+W -> DB : Получить задачу, назначить\npush-попытку и таймер
+W -> Push : Отправить push с\nидентификатором попытки
+Push --> W : Запрос принят
+Push -> App : Push
+App -> API : ACK с идентификатором\nпопытки
+API -> DB : Сохранить подтверждение,\nзавершить доставку и снять\nзадачу
+@enduml

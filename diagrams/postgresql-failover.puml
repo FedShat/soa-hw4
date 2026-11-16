@@ -1,0 +1,24 @@
+@startuml
+hide footbox
+participant "Воркер" as W
+database "PostgreSQL" as DB
+participant "Push-провайдер" as Push
+participant "SMS-провайдер" as SMS
+participant "Notification API" as API
+W -> DB : Назначить push-попытку и\nтаймер 2 с
+W -> Push : Отправить push
+... Срок подтверждения истёк ...
+W -> Push : Сверить статус, если\nдоступно
+Push --> W : Статус неизвестен
+W -> DB : Повторно проверить ACK,\nразрешить SMS при\nотсутствии ACK
+alt ACK успел сохраниться
+  DB --> W : Доставка завершена
+else SMS разрешена настройками и назначена
+  W -> SMS : Отправить SMS с ключом попытки
+  SMS -> API : Положительный DLR
+  API -> DB : Завершить доставку
+  opt Поздний ACK push
+    API -> DB : Зафиксировать подтверждение второго канала
+  end
+end
+@enduml

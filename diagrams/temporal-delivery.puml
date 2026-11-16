@@ -1,0 +1,25 @@
+@startuml
+hide footbox
+participant "Банковский сервис" as Bank
+participant "API / ретранслятор" as API
+database "Реестр" as DB
+participant "Temporal Service" as T
+participant "Workflow / Activity" as W
+participant "Push-провайдер" as Push
+participant "Мобильное приложение" as App
+Bank -> API : Событие из outbox
+API -> DB : Уведомление и команда\nStart в одной транзакции
+API --> Bank : Идентификатор после commit
+API -> T : Start(notification_id)
+T -> W : Выполнить workflow
+W -> DB : Назначить push-попытку
+W -> Push : Отправить push
+Push -> App : Push
+W -> T : Таймер ожидания ACK
+App -> API : ACK
+API -> DB : Сохранить ACK, завершить\nдоставку и записать\nкоманду Signal
+API -> T : Signal о смене статуса
+T -> W : Продолжить workflow
+W -> DB : Сверить подтверждение
+W -> T : Завершить workflow
+@enduml
